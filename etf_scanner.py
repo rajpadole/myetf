@@ -32,9 +32,23 @@ def scan_etfs():
     for ticker in TICKERS:
         try:
             data = yf.download(ticker, period="3mo", interval="1d", progress=False)
+            
             if len(data) >= 15:
-                close = data["Close"].squeeze().dropna()
+                # 1. Safely extract Close column regardless of yfinance version
+                if isinstance(data.columns, pd.MultiIndex):
+                    close_col = data["Close"].iloc[:, 0]
+                else:
+                    close_col = data["Close"]
+                
+                # 2. Force to 1D series, ensure numeric, and completely drop NaNs
+                close = pd.to_numeric(close_col.squeeze(), errors='coerce').dropna()
+                
+                # 3. Ensure we still have enough data to calculate RSI
+                if len(close) < 15:
+                    continue
+                    
                 rsi_series = calculate_rsi(close)
+                
                 current_rsi = round(float(rsi_series.iloc[-1]), 2)
                 current_price = round(float(close.iloc[-1]), 2)
 
@@ -45,7 +59,8 @@ def scan_etfs():
                     alert_message += f"• *RSI(14):* {current_rsi}\n"
                     alert_message += f"• *CMP:* ₹{current_price}\n"
                     alert_message += f"• *Target (+3%):* ₹{target}\n\n"
-        except Exception:
+        except Exception as e:
+            print(f"Error processing {ticker}: {e}")
             continue
 
     if not found_setups:
