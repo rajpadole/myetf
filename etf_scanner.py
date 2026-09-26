@@ -33,7 +33,7 @@ def scan_etfs():
         try:
             data = yf.download(ticker, period="3mo", interval="1d", progress=False)
             if len(data) >= 15:
-                close = data["Close"].squeeze()
+                close = data["Close"].squeeze().dropna()
                 rsi_series = calculate_rsi(close)
                 current_rsi = round(float(rsi_series.iloc[-1]), 2)
                 current_price = round(float(close.iloc[-1]), 2)
